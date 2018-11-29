@@ -8,6 +8,16 @@ from functools import partial
 from hubploy import gitutils
 
 
+def inspect_distribution(client, image):
+    api = client.api
+    headers = {}
+    headers['X-Registry-Auth'] = docker.auth.get_config_header(api, image)
+
+    return api._result(
+        api._get(api._url("/distribution/{0}/json", image), headers=headers), True
+    )
+
+
 def make_imagespec(path, image_name, last=1):
     last_commit = gitutils.last_git_modified(path, last)
     return f'{image_name}:{last_commit}'
@@ -19,7 +29,7 @@ def needs_building(client, path, image_name):
     """
     image_spec = make_imagespec(path, image_name)
     try:
-        image_manifest = client.images.get_registry_data(image_spec)
+        image_manifest = inspect_distribution(client, image_spec)
         return image_manifest is None
     except docker.errors.ImageNotFound:
         return True
